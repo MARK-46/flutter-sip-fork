@@ -33,11 +33,11 @@ dependencies:
 ```dart
 import 'package:sip_fork/sip_fork.dart' show 
   SIP_Client, SIP_Session,
-  SIP_Settings, SIP_StateEnum, SIP_MediaStream, SIP_SocketType, SIP_StatusLine, SIP_AudioEnum;
+  SIP_Settings, SIP_StateEnum, SIP_MediaStream, SIP_SocketType, SIP_StatusLine, SIP_AudioOutputEnum;
 
 void example() async {
   // Create settings (async factory)
-  SIP_Settings settings = await SIP_Settings.create(
+  SIP_Settings settings = SIP_Settings.create(
     socket_type: SIP_SocketType.WS,
     socket_uri: 'ws://123.45.67.89:8080/ws',
     sip_uri: 'sip:mark-1@123.45.67.89:5060',
@@ -73,7 +73,7 @@ void example() async {
     // session.setMicEnabled(false);
     // session.setVideoEnabled(false);
     // session.setHoldEnabled(true);
-    // session.setAudioState(SIP_AudioEnum.speakerphone);
+    // session.setAudioState(SIP_AudioOutputEnum.speakerphone);
   });
   client.on('sip.session.outgoing',    (SIP_Session session) { });
   client.on('sip.session.connecting',  (SIP_Session session) { });
@@ -98,9 +98,9 @@ void example() async {
   // client.setVideoEnabled('mark-2', false);
   // client.setHoldEnabled('mark-2', true);
 
-  // client.setAudioState('mark-2', SIP_AudioEnum.speakerphone);
-  // client.setAudioState('mark-2', SIP_AudioEnum.bluetooth);
-  // client.setAudioState('mark-2', SIP_AudioEnum.earpiece);
+  // client.setAudioState('mark-2', SIP_AudioOutputEnum.speakerphone);
+  // client.setAudioState('mark-2', SIP_AudioOutputEnum.bluetooth);
+  // client.setAudioState('mark-2', SIP_AudioOutputEnum.earpiece);
 }
 ```
 
@@ -152,7 +152,7 @@ Top-level classes:
     * `setMicEnabled(sessionIdOrTarget, bool)`
     * `setVideoEnabled(sessionIdOrTarget, bool)`
     * `setHoldEnabled(sessionIdOrTarget, bool)`
-    * `setAudioState(sessionIdOrTarget, SIP_AudioEnum)`
+    * `setAudioState(sessionIdOrTarget, SIP_AudioOutputEnum)`
 
 * `SIP_Session`
 
@@ -161,20 +161,20 @@ Top-level classes:
     * `answer()`, `hangup()`
     * `setMicEnabled(bool)`, `setVideoEnabled(bool)`
     * `setHoldEnabled(bool)`
-    * `setAudioState(SIP_AudioEnum)`
+    * `setAudioState(SIP_AudioOutputEnum)`
 
 * Enums / Types:
 
   * `SIP_StateEnum` — `CONNECTED`, `DISCONNECTED`, `RECONNECTING`, `REGISTRATION_FAILED`, `REGISTERED`, `UNREGISTERED`.
   * `SIP_SocketType` — e.g., `WS`.
-  * `SIP_AudioEnum` — audio routing modes: `speakerphone`, `bluetooth`, `earpiece`.
+  * `SIP_AudioOutputEnum` — audio routing modes: `speakerphone`, `bluetooth`, `earpiece`.
   * `SIP_MediaStream` — media stream object provided on `sip.session.stream`.
   * `SIP_StatusLine` — status information for state or termination callbacks.
 
 ## Media and audio routing
 
 * Use `setMicEnabled` and `setVideoEnabled` on session instances to control local capture.
-* Use `setAudioState(..., SIP_AudioEnum.speakerphone|bluetooth|earpiece)` to choose output routing.
+* Use `setAudioState(..., SIP_AudioOutputEnum.speakerphone|bluetooth|earpiece)` to choose output routing.
 * Handle `sip.session.stream` to attach remote/local media streams to your UI/audio pipeline.
 
 ## ICE / NAT traversal

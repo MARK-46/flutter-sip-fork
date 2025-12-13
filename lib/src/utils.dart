@@ -12,8 +12,6 @@ import 'package:uuid/uuid.dart';
 import 'constants.dart' as DartSIP_C;
 import 'uri.dart';
 
-import 'package:flutter/foundation.dart' show kIsWeb;
-
 
 final JsonDecoder decoder = JsonDecoder();
 final JsonEncoder encoder = JsonEncoder();
@@ -185,13 +183,11 @@ List<dynamic> cloneArray(List<dynamic>? array) {
 }
 
 Future<String> getLocalIpAddress() async {
-  if (kIsWeb) {
-    // On web we can't access local network interfaces directly
-    // Only possible via WebRTC trick or external service
-    return _getWebLocalIp();
-  } else {
+  //if (dart.library.html) {
+  //  return _getWebLocalIp();
+  //} else {
     return _getNativeLocalIp();
-  }
+  //}
 }
 
 Future<String> _getNativeLocalIp() async {
@@ -204,8 +200,8 @@ Future<String> _getNativeLocalIp() async {
 
     for (final interface in interfaces) {
       for (final addr in interface.addresses) {
-        if (!addr.isLoopback &&
-            addr.type == InternetAddressType.IPv4) {
+        if (!addr.isLoopback && addr.type == InternetAddressType.IPv4) {
+          print('NATIVE_LOCAL_IP: ${addr.address}');
           return addr.address;
         }
       }

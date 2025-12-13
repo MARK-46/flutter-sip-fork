@@ -33,6 +33,9 @@ class SIP_Settings {
   final URI registrar_server;
   final URI contact_uri;
 
+  String? pn_provider;
+  String? pn_token;
+
   // Приватный конструктор
   SIP_Settings._({
     required this.instance_id,
@@ -57,6 +60,8 @@ class SIP_Settings {
     required this.session_refresh,
     required this.ice_servers,
     required this.contact_uri,
+    required this.pn_provider,
+    required this.pn_token,
     required this.registrar_server,
   }) {
     logger.wtf('[SETTING] instance_id            = $instance_id');
@@ -82,9 +87,11 @@ class SIP_Settings {
     logger.wtf('[SETTING] ice_servers            = $ice_servers');
     logger.wtf('[SETTING] contact_uri            = $contact_uri');
     logger.wtf('[SETTING] registrar_server       = $registrar_server');
+    logger.wtf('[SETTING] pn_provider            = $pn_provider');
+    logger.wtf('[SETTING] pn_token                 = $pn_token');
   }
 
-  static Future<SIP_Settings> create({
+  static SIP_Settings create({
     String? instance_id,
     String? user_agent,
     String? local_ip,
@@ -95,6 +102,8 @@ class SIP_Settings {
     required String password,
     String? realm,
     String? ha1,
+    String? pn_provider,
+    String? pn_token,
     int register_expires = 20,
     int no_answer_timeout = 60 * 1000,
     int ice_gathering_timeout = 500,
@@ -103,9 +112,9 @@ class SIP_Settings {
     SIP_DTMFMode dtmf_mode = SIP_DTMFMode.RTP,
     SIP_Method session_refresh = SIP_Method.UPDATE,
     List<Map<String, String>> ice_servers = const [],
-  }) async {
+  }) {
     final sipUri = URI.parse(sip_uri) as URI;
-    final resolvedLocalIp = local_ip ?? await Utils.getLocalIpAddress();
+    final resolvedLocalIp = local_ip ?? '0.0.0.0';
     final resolvedInstanceId = instance_id ?? Utils.newUUID();
     final resolvedUserAgent = user_agent ?? 'SIP-Client v2.0.0';
     final host = sipUri.host;
@@ -119,7 +128,7 @@ class SIP_Settings {
       {
         'transport': 
           socket_type == SIP_SocketType.WS 
-          ? 'wss'
+          ? 'ws'
           : socket_type == SIP_SocketType.TCP 
           ? 'tcp'
           : socket_type == SIP_SocketType.UDP 
@@ -154,6 +163,8 @@ class SIP_Settings {
       session_refresh: session_refresh,
       ice_servers: ice_servers,
       contact_uri: contact,
+      pn_provider: pn_provider,
+      pn_token: pn_token,
       registrar_server: registrar_server,
     );
   }

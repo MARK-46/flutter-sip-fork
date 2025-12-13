@@ -896,14 +896,14 @@ class RTCSession implements Owner {
     EventManager handlers = EventManager();
 
     handlers.on(EventSucceeded(), (EventSucceeded event) {
-      if (completer.isCompleted) {
+      if (!completer.isCompleted) {
         completer.complete(true);
       }
     });
 
     handlers.on(EventCallFailed(), (EventCallFailed event) {
       terminate(<String, dynamic>{'cause': CausesType.WEBRTC_ERROR, 'status_code': 500, 'reason_phrase': event.cause?.cause ?? 'Hold Failed'});
-      if (completer.isCompleted) {
+      if (!completer.isCompleted) {
         completer.complete(false);
       }
     });
@@ -945,13 +945,13 @@ class RTCSession implements Owner {
 
     EventManager handlers = EventManager();
     handlers.on(EventSucceeded(), (EventSucceeded event) {
-      if (completer.isCompleted) {
+      if (!completer.isCompleted) {
         completer.complete(true);
       }
     });
 
     handlers.on(EventCallFailed(), (EventCallFailed event) {
-      if (completer.isCompleted) {
+      if (!completer.isCompleted) {
         completer.complete(false);
       }
       terminate(<String, dynamic>{'cause': CausesType.WEBRTC_ERROR, 'status_code': 500, 'reason_phrase': 'Unhold Failed'});
@@ -996,13 +996,13 @@ class RTCSession implements Owner {
 
     EventManager handlers = EventManager();
     handlers.on(EventSucceeded(), (EventSucceeded event) {
-      if (completer.isCompleted) {
+      if (!completer.isCompleted) {
         completer.complete(true);
       }
     });
 
     handlers.on(EventCallFailed(), (EventCallFailed event) {
-      if (completer.isCompleted) {
+      if (!completer.isCompleted) {
         completer.complete(false);
       }
       terminate(<String, dynamic>{'cause': CausesType.WEBRTC_ERROR, 'status_code': 500, 'reason_phrase': 'Media Renegotiation Failed'});
@@ -2320,123 +2320,121 @@ class RTCSession implements Owner {
     }
   }
 
+  SIP_SessionStateEnum? _getSessionState(String target) {
+    if (_client.sessions.containsKey(target)) {
+      return _client.sessions[target]!.state;
+    }
+    return SIP_SessionStateEnum.TERMINATED;
+  }
+
   void _notifyOnIncoming(SIP_Originator originator, dynamic request) {
-    logger.d('session incoming');
-    final session = SIP_Session(_client, this, originator);
-
-    _client.sessions[session.target] = session;
-
+    logger.d('[SIP_CLIENT] INCOMING            -> $id -- $target -- ${originator.name}');
+    final session = SIP_Session(_client, this, originator, SIP_SessionStateEnum.INCOMING_INITIATION);
+    _client.sessions[target]?.hangup();
+    _client.sessions[target] = session;
     _emitter.emit('sip.session.incoming', [session]);
-    logger.wtf('[SIP_CLIENT] INCOMING            -> ${session.id} -- ${session.target} -- ${originator.name}');
   }
 
   void _notifyOnOutgoing(SIP_Originator originator, dynamic request) {
-    logger.d('session outgoing');
-    final session = SIP_Session(_client, this, originator);
-
-    _client.sessions[session.target] = session;
-
+    logger.d('[SIP_CLIENT] OUTGOING            -> $id -- $target -- ${originator.name}');
+    _client.sessions[target]?.hangup();
+    final session = SIP_Session(_client, this, originator, SIP_SessionStateEnum.OUTGOING_INITIATION);
+    _client.sessions[target] = session;
     _emitter.emit('sip.session.outgoing', [session]);
-    logger.wtf('[SIP_CLIENT] OUTGOING            -> ${session.id} -- ${session.target} -- ${originator.name}');
   }
 
   void _notifyOnConnecting(SIP_Originator originator, dynamic request) {
-    logger.d('session connecting');
-    final session = SIP_Session(_client, this, originator);
-
-    _client.sessions[session.target] = session;
-
+    logger.d('[SIP_CLIENT] CONNECTING          -> $id -- $target -- ${originator.name}');
+    final session = SIP_Session(_client, this, originator, SIP_SessionStateEnum.CONNECTING);
+    _client.sessions[target] = session;
     _emitter.emit('sip.session.connecting', [session]);
-    logger.wtf('[SIP_CLIENT] CONNECTING          -> ${session.id} -- ${session.target} -- ${originator.name}');
   }
 
   void _notifyOnProgress(SIP_Originator originator, dynamic response) {
-    logger.d('session progress');
-    final session = SIP_Session(_client, this, originator);
-
-    _client.sessions[session.target] = session;
-
+    logger.d('[SIP_CLIENT] PROGRESS            -> $id -- $target -- ${originator.name}');
+    final state = _getSessionState(target);
+    if (state == null) {
+      terminate();
+      return;
+    }
+    final session = SIP_Session(_client, this, originator, state);
+    _client.sessions[target] = session;
     _emitter.emit('sip.session.progress', [session]);
-    logger.wtf('[SIP_CLIENT] PROGRESS            -> ${session.id} -- ${session.target} -- ${originator.name}');
   }
 
   void _notifyOnAccepted(SIP_Originator originator, [dynamic message]) {
-    logger.d('session accepted');
-    final session = SIP_Session(_client, this, originator);
-
-    _client.sessions[session.target] = session;
+    logger.d('[SIP_CLIENT] CONFIRMED           -> $id -- $target -- ${originator.name}');
+    final session = SIP_Session(_client, this, originator, SIP_SessionStateEnum.CONFIRMED);
+    _client.sessions[target] = session;
     _start_time = DateTime.now();
-
     _emitter.emit('sip.session.confirmed', [session]);
-    logger.wtf('[SIP_CLIENT] CONFIRMED           -> ${session.id} -- ${session.target} -- ${originator.name}');
   }
 
   void _notifyOnConfirmed(SIP_Originator originator, dynamic ack) {
-    logger.d('session confirmed');
-    final session = SIP_Session(_client, this, originator);
-
-    _client.sessions[session.target] = session;
+    logger.d('[SIP_CLIENT] CONFIRMED           -> $id -- $target -- ${originator.name}');
+    final session = SIP_Session(_client, this, originator, SIP_SessionStateEnum.CONFIRMED);
+    _client.sessions[target] = session;
     _is_confirmed = true;
-
     _emitter.emit('sip.session.confirmed', [session]);
-    logger.wtf('[SIP_CLIENT] CONFIRMED           -> ${session.id} -- ${session.target} -- ${originator.name}');
   }
 
   void _notifyOnEnded(SIP_Originator originator, ErrorCause cause) {
-    logger.d('session ended - ${cause.status_code}, ${cause.cause}, ${cause.reason_phrase}');
-    final session = SIP_Session(_client, this, originator);
+    logger.d('[SIP_CLIENT] TERMINATED          -> $id -- $target -- ${originator.name} (Code: ${cause.status_code}, Reason: ${cause.reason_phrase}, Cause: ${cause.cause})');
+    final session = SIP_Session(_client, this, originator, SIP_SessionStateEnum.TERMINATED);
     final status = SIP_StatusLine(cause.status_code ?? 0, cause.cause ?? cause.reason_phrase ?? '');
-
-    _client.sessions.remove(session.target);
+    _client.sessions.remove(target);
     _end_time = DateTime.now();
     _close();
-
     _emitter.emit('sip.session.terminated', [session, status]);
-    logger.wtf('[SIP_CLIENT] TERMINATED          -> ${session.id} -- ${session.target} -- ${originator.name}');
   }
 
   void _notifyOnFailed(SIP_Originator originator, int? status_code, String cause, String? reason_phrase) {
-    logger.d('session failed - $status_code, $cause, $reason_phrase');
-    final session = SIP_Session(_client, this, originator);
+    logger.d('[SIP_CLIENT] TERMINATED          -> $id -- $target -- ${originator.name} (Code: ${status_code ?? 0}, Reason: $reason_phrase, Cause: $cause)');
+    final session = SIP_Session(_client, this, originator, SIP_SessionStateEnum.TERMINATED);
     final status = SIP_StatusLine(status_code ?? 0, cause);
 
-    _client.sessions.remove(session.target);
+    _client.sessions.remove(target);
     _end_time = DateTime.now();
     _close();
 
     _emitter.emit('sip.session.terminated', [session, status]);
-    logger.wtf('[SIP_CLIENT] TERMINATED          -> ${session.id} -- ${session.target} -- ${originator.name} (Code: ${status.code}, Reason: ${status.reason})');
   }
 
   void _notifyOnStream(SIP_Originator originator, MediaStream s) {
-    logger.d('session stream');
-    final session = SIP_Session(_client, this, originator);
+    logger.d('[SIP_CLIENT] STREAM              -> $id -- $target -- ${originator.name} (AudioMuted: $_audioMuted, VideoMuted: $_videoMuted)');
+    final state = _getSessionState(target);
+    if (state == null) {
+      terminate();
+      return;
+    }
+    final session = SIP_Session(_client, this, originator, state);
     final stream = SIP_MediaStream(s, _audioMuted, _videoMuted);
-
     _client.sessions[session.target] = session;
-
     _emitter.emit('sip.session.stream', [session, stream]);
-    logger.wtf('[SIP_CLIENT] STREAM              -> ${session.id} -- ${session.target} -- ${originator.name} (AudioMuted: $_audioMuted, VideoMuted: $_videoMuted)');
   }
 
   void _notifyOnHold(SIP_Originator originator) {
-    logger.d('session onhold');
-    final session = SIP_Session(_client, this, originator);
-
-    _client.sessions[session.target] = session;
-
+    logger.d('[SIP_CLIENT] HOLD                -> $id -- $target -- ${originator.name}');
+    final state = _getSessionState(target);
+    if (state == null) {
+      terminate();
+      return;
+    }
+    final session = SIP_Session(_client, this, originator, state);
+    _client.sessions[target] = session;
     _emitter.emit('sip.session.hold', [session]);
-    logger.wtf('[SIP_CLIENT] HOLD                -> ${session.id} -- ${session.target} -- ${originator.name}');
   }
 
   void _notifyOnUnhold(SIP_Originator originator) {
-    logger.d('session onunhold');
-    final session = SIP_Session(_client, this, originator);
-    
-    _client.sessions[session.target] = session;
-
+    logger.d('[SIP_CLIENT] UNHOLD              -> $id -- $target -- ${originator.name}');
+    final state = _getSessionState(target);
+    if (state == null) {
+      terminate();
+      return;
+    }
+    final session = SIP_Session(_client, this, originator, state);
+    _client.sessions[target] = session;
     _emitter.emit('sip.session.unhold', [session]);
-    logger.wtf('[SIP_CLIENT] UNHOLD              -> ${session.id} -- ${session.target} -- ${originator.name}');
   }
 
   Map<String, dynamic> _options([bool voiceOnly = true]) {
@@ -2448,7 +2446,14 @@ class RTCSession implements Owner {
         'iceServers': _client.configuration.ice_servers
       },
       'mediaConstraints': <String, dynamic>{
-        'audio': true,
+        'audio': {
+          'echoCancellation': true,
+          'noiseSuppression': true,
+          'autoGainControl': true,
+          'highpassFilter': true,
+          'googTypingNoiseDetection': true,
+          'googAudioMirroring': false,
+        },
         'video': voiceOnly ? false : <String, dynamic>{
           'mandatory': <String, dynamic>{
             'minWidth': '640',

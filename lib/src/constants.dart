@@ -253,10 +253,12 @@ enum SIP_StateEnum {
 typedef SIP_Sessions = Map<String, SIP_Session>;
 
 enum SIP_SessionStateEnum { 
-  CALL_INITIATION,
+  NONE,
+  INCOMING_INITIATION,
+  OUTGOING_INITIATION,
   CONNECTING,
   CONNECTED,
-  IN_CALL,
+  CONFIRMED,
   TERMINATED;
 }
 
@@ -267,10 +269,19 @@ class SIP_StatusLine {
   SIP_StatusLine(this.code, this.reason);
 }
 
-enum SIP_AudioEnum {
-  speakerphone,
-  bluetooth,
-  earpiece;
+enum SIP_AudioOutputEnum {
+  bluetooth, // Bluetooth SCO or A2DP headset
+  wired_headset, // Wired headset 3.5mm jack
+  speaker, // Device speaker
+  earpiece, // Device earpiece
+}
+
+class SIP_AudioOutputDevice {
+  final String label;
+  final String deviceId;
+  final SIP_AudioOutputEnum type;
+
+  SIP_AudioOutputDevice(this.label, this.deviceId, this.type);
 }
 
 class SIP_MediaStream {

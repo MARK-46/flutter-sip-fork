@@ -1,6 +1,8 @@
 import 'dart:async';
 import 'dart:core';
 
+import 'package:sip_fork/src/logger.dart';
+
 import 'socket_interface.dart';
 import 'package:web_socket_client/web_socket_client.dart';
 
@@ -20,7 +22,7 @@ class WSClient extends SIP_SocketInterface {
   StreamSubscription<dynamic>? _messagesSubscription;
   
   @override
-  String get uri => this._uri;
+  String get uri => _uri;
 
   @override
   SIP_SocketStateEnum get state => _state;
@@ -37,7 +39,7 @@ class WSClient extends SIP_SocketInterface {
   @override
   Future<SIP_SocketStateEnum> connect() async {
     try {
-      print('[I] WebSocket --- connect -- $uri');
+      logger.f('[I] WebSocket --- connect -- $uri');
       if (_state == SIP_SocketStateEnum.CONNECTED || _state == SIP_SocketStateEnum.RECONNECTED) {
         return SIP_SocketStateEnum.CONNECTED;
       }
@@ -58,15 +60,16 @@ class WSClient extends SIP_SocketInterface {
       );
 
       _connectionSubscription = _wsc?.connection.listen((ConnectionState state) {
-        print('[I] WebSocket --- state -- $state');
         if (state is Connecting) {
           _state = SIP_SocketStateEnum.CONNECTING;
+          return; // skip for completer
         } else if (state is Connected) {
           emit('wsc.connect', <dynamic>[]);
           _state = SIP_SocketStateEnum.CONNECTED;
           notifyConnect(uri);
         } else if (state is Reconnecting) {
           _state = SIP_SocketStateEnum.RECONNECTING;
+          return; // skip for completer
         } else if (state is Reconnected) {
           emit('wsc.connect', <dynamic>[]);
           _state = SIP_SocketStateEnum.RECONNECTED;
@@ -80,19 +83,21 @@ class WSClient extends SIP_SocketInterface {
           notifyDisconnected(code, reason);
         }
 
-        if (completer.isCompleted) { // one-time call
+        if (!completer.isCompleted) { // one-time call
           completer.complete(_state);
         }
+
+        logger.f('[I] WebSocket --- state -- ${_state.name}');
       });
 
       _messagesSubscription = _wsc?.messages.listen((dynamic payload) {
-        print('[I] WebSocket --- message -- $payload');
+        // logger.f('[I] WebSocket --- message -- $payload');
         notifyData(payload);
       });
 
       return completer.future;
     } catch (ex, s) {
-      print('[E] WebSocket --- connect -- $ex, $s');
+      logger.f('[E] WebSocket --- connect -- $ex, $s');
       return SIP_SocketStateEnum.DISCONNECTED;
     }
   }
@@ -100,7 +105,7 @@ class WSClient extends SIP_SocketInterface {
   @override
   bool send(dynamic payload) {
     try {
-      print('[I] WebSocket --- send -- $payload');
+      // logger.f('[I] WebSocket --- send -- $payload');
       if (_wsc == null) {
         return false;
       }
@@ -112,7 +117,7 @@ class WSClient extends SIP_SocketInterface {
 
       return false;
     } catch (ex, s) {
-      print('[E] WebSocket --- send -- $ex, $s');
+      logger.f('[E] WebSocket --- send -- $ex, $s');
       return false;
     }
   }
@@ -120,7 +125,7 @@ class WSClient extends SIP_SocketInterface {
   @override
   Future disconnect(int? code, String? reason) async {
     try {
-      print('[I] WebSocket --- disconnect -- $code, $reason');
+      logger.f('[I] WebSocket --- disconnect -- $code, $reason');
       code = code ?? -1;
       reason = reason ?? 'Connection lost';
 
@@ -131,7 +136,7 @@ class WSClient extends SIP_SocketInterface {
 
       notifyDisconnected(code, reason);
     } catch (ex, s) {
-      print('[E] WebSocket --- disconnect -- $ex, $s');
+      logger.f('[E] WebSocket --- disconnect -- $ex, $s');
     }
   }
 

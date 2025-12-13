@@ -28,8 +28,11 @@ import 'uri.dart';
 import 'utils.dart' as Utils;
 
 
-class Contact {
-  Contact(this.uri);
+class SIP_Contact {
+  SIP_Contact(this.uri, this.pn_provider, this.pn_token);
+
+  String? pn_provider;
+  String? pn_token;
 
   String? pub_gruu;
   String? temp_gruu;
@@ -46,11 +49,14 @@ class Contact {
       contact += pub_gruu ?? uri.toString();
     }
 
+    contact += ';pn-provider=${Uri.encodeComponent(pn_provider ?? '0')};pn-token=${Uri.encodeComponent(pn_token ?? '0')}';
+
     if (outbound && (anonymous ? temp_gruu == null : pub_gruu == null)) {
       contact += ';ob';
     }
 
     contact += '>';
+
     return contact;
   }
 }
@@ -69,11 +75,11 @@ class SIP_Client extends EventEmitter {
   final Set<Applicant>            _applicants = <Applicant>{};
   final TransactionBag            _transactions = TransactionBag();
 
-  Contact? _contact;
+  SIP_Contact? _contact;
   Registrator? _registrator;
   bool _stopping = false;
 
-  Contact? get contact => _contact;
+  SIP_Contact? get contact => _contact;
   SIP_Sessions get sessions => _sessions;
   SIP_Settings get configuration => _settings;
   SIP_SocketInterface? get transport => _socket;
@@ -194,6 +200,10 @@ class SIP_Client extends EventEmitter {
       return false;
     }
 
+    if (target == _settings.username) {
+      return false;
+    }
+
     if (_sessions.containsKey(target)) {
       logger.e('already exists session with target $target');
       return false;
@@ -205,13 +215,13 @@ class SIP_Client extends EventEmitter {
     return true;
   }
 
-  Future<bool> answer(String target) async {
+  Future<bool> answer(String target, {bool voiceOnly = true, MediaStream? mediaStream, List<String>? headers}) async {
     if (!_sessions.containsKey(target)) {
       logger.e('no session with target $target');
       return false;
     }
 
-    return _sessions[target]!.answer();
+    return _sessions[target]!.answer(voiceOnly, mediaStream, headers);
   }
 
   Future<bool> hangup(String target) async {
@@ -250,13 +260,46 @@ class SIP_Client extends EventEmitter {
     return _sessions[target]!.setHoldEnabled(enabled);
   }
 
-  Future<bool> setAudioState(String target, SIP_AudioEnum state) async {
+  Future<List<SIP_AudioOutputDevice>> getAudioOutputDevices() async {
+    final devices = await navigator.mediaDevices.enumerateDevices();
+    final outputs = <SIP_AudioOutputDevice>[];
+    for (var device in devices) {
+      print('=========== ${device.label}, ${device.kind}, ${device.groupId}, ${device.deviceId}');
+      if (device.kind == 'audiooutput') {
+        if (device.deviceId.toLowerCase().contains('bluetooth') || (device.groupId != null && device.groupId!.toLowerCase().contains('bluetooth'))) {
+          outputs.add(SIP_AudioOutputDevice(device.label, device.deviceId, SIP_AudioOutputEnum.bluetooth));
+        } else if (device.deviceId.toLowerCase().contains('headset') || (device.groupId != null && device.groupId!.toLowerCase().contains('headset'))) {
+          outputs.add(SIP_AudioOutputDevice(device.label, device.deviceId, SIP_AudioOutputEnum.wired_headset));
+        } else if (device.deviceId.toLowerCase().contains('headphone') || (device.groupId != null && device.groupId!.toLowerCase().contains('headphone'))) {
+          outputs.add(SIP_AudioOutputDevice(device.label, device.deviceId, SIP_AudioOutputEnum.wired_headset));
+        } else if (device.deviceId.toLowerCase().contains('speaker') || (device.groupId != null && device.groupId!.toLowerCase().contains('speaker'))) {
+          outputs.add(SIP_AudioOutputDevice(device.label, device.deviceId, SIP_AudioOutputEnum.speaker));
+        } else if (device.deviceId.toLowerCase().contains('earpiece') || (device.groupId != null && device.groupId!.toLowerCase().contains('earpiece'))) {
+          outputs.add(SIP_AudioOutputDevice(device.label, device.deviceId, SIP_AudioOutputEnum.earpiece));
+        } else {
+          // unknown
+        }
+      }
+    }
+    return outputs;
+  }
+
+  Future<List<SIP_AudioOutputDevice>>  getCurrentAudioOutputDevice(String target) async {
+    if (!_sessions.containsKey(target)) {
+      logger.e('no session with target $target');
+      return [];
+    }
+
+    return _sessions[target]!.getAudioOutputDevice();
+  }
+
+  Future<bool> setAudioOutput(String target, SIP_AudioOutputDevice device) async {
     if (!_sessions.containsKey(target)) {
       logger.e('no session with target $target');
       return false;
     }
 
-    return _sessions[target]!.setAudioState(state);
+    return _sessions[target]!.setAudioOutputDevice(device);
   }
 
   /**
@@ -624,7 +667,7 @@ class SIP_Client extends EventEmitter {
 
   void _loadSettings() {
     // Contact URI.
-    _contact = Contact(_settings.contact_uri);
+    _contact = SIP_Contact(_settings.contact_uri, _settings.pn_provider, _settings.pn_token);
   }
 
   void _onTransportConnectionChanged({required SIP_SocketStateEnum state, int? code, String? reason}) {

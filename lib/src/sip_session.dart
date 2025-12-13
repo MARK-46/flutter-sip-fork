@@ -8,8 +8,9 @@ class SIP_Session {
   final SIP_Client _sip;
   final RTCSession _session;
   final SIP_Originator _originator;
+  final SIP_SessionStateEnum _state;
 
-  SIP_Session(this._sip, this._session, this._originator);
+  SIP_Session(this._sip, this._session, this._originator, this._state);
 
   String get id => _session.id;
   String get target => _session.target;
@@ -24,10 +25,10 @@ class SIP_Session {
   }
 
   RTCSession get session => _session;
+  SIP_SessionStateEnum get state => _state;
   SIP_Originator get originator => _originator;
   SIP_Direction? get direction => _session.direction;
   RTCPeerConnection? get peer_connection => _session.connection;
-
 
   bool get isRemoteMicEnabled => _peerHasMediaLine('audio');
   bool get isRemoteVideoEnabled => _peerHasMediaLine('video');
@@ -69,7 +70,29 @@ class SIP_Session {
     return _session.setVideoEnabled(enabled);
   }
 
-  Future<bool> setAudioState(SIP_AudioEnum state) async { throw Exception('not inplemented yet'); }
+  Future<bool> setAudioOutputDevice(SIP_AudioOutputDevice device) async {
+    try {
+      final media = await navigator.mediaDevices.selectAudioOutput(
+        AudioOutputOptions(deviceId: device.deviceId),
+      );
+      return media.deviceId == device.deviceId;
+    } catch (e) {
+      print('Error setting audio output: $e');
+      return false;
+    }
+  }
+
+  Future<List<SIP_AudioOutputDevice>> getAudioOutputDevice() async {
+    final outputs = <SIP_AudioOutputDevice>[];
+    final streams = _session.connection?.getLocalStreams() ?? [];
+    for (var stream in streams) {
+      final tracks = stream?.getTracks() ?? [];
+      for (var track in tracks) {
+        print('-- track -- ${track.label} = ${track.kind} = ${track.id} = ${track.enabled} = ${track.muted}');
+      }
+    }
+    return outputs;
+  }
 
   void sendDTMF(String tones, [Map<String, dynamic>? options]) {
     _session.sendDTMF(tones, options);

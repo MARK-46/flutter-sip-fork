@@ -13,3 +13,4 @@ export 'src/sip_session.dart';
 export 'src/config.dart';
 export 'src/constants.dart';
 export 'src/logger.dart';
+export 'src/event_manager/event_manager.dart';
