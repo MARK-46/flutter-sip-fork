@@ -138,7 +138,7 @@ class RTCSession implements Owner {
 
   String get id => _id ?? 'ID_PENDING';
   String get target => remote_identity?.uri?.user ?? 'unknown';
-  String get display_name => remote_identity?.display_name ?? 'Unknown';
+  String get display_name => remote_identity?.display_name ?? target;
 
   dynamic get request => _request;
   String? get contact => _contact;
@@ -2367,6 +2367,7 @@ class RTCSession implements Owner {
     final session = SIP_Session(_client, this, originator, SIP_SessionStateEnum.CONFIRMED);
     _client.sessions[target] = session;
     _start_time = DateTime.now();
+    _client.resetAudioOutputDevice(target);
     _emitter.emit('sip.session.confirmed', [session]);
   }
 
@@ -2375,6 +2376,7 @@ class RTCSession implements Owner {
     final session = SIP_Session(_client, this, originator, SIP_SessionStateEnum.CONFIRMED);
     _client.sessions[target] = session;
     _is_confirmed = true;
+    _client.resetAudioOutputDevice(target);
     _emitter.emit('sip.session.confirmed', [session]);
   }
 
@@ -2382,6 +2384,7 @@ class RTCSession implements Owner {
     logger.d('[SIP_CLIENT] TERMINATED          -> $id -- $target -- ${originator.name} (Code: ${cause.status_code}, Reason: ${cause.reason_phrase}, Cause: ${cause.cause})');
     final session = SIP_Session(_client, this, originator, SIP_SessionStateEnum.TERMINATED);
     final status = SIP_StatusLine(cause.status_code ?? 0, cause.cause ?? cause.reason_phrase ?? '');
+    _client.resetAudioOutputDevice(target);
     _client.sessions.remove(target);
     _end_time = DateTime.now();
     _close();
@@ -2410,6 +2413,7 @@ class RTCSession implements Owner {
     final session = SIP_Session(_client, this, originator, state);
     final stream = SIP_MediaStream(s, _audioMuted, _videoMuted);
     _client.sessions[session.target] = session;
+    _client.resetAudioOutputDevice(target);
     _emitter.emit('sip.session.stream', [session, stream]);
   }
 
@@ -2434,6 +2438,7 @@ class RTCSession implements Owner {
     }
     final session = SIP_Session(_client, this, originator, state);
     _client.sessions[target] = session;
+    _client.resetAudioOutputDevice(target);
     _emitter.emit('sip.session.unhold', [session]);
   }
 

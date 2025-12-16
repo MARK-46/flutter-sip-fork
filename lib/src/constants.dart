@@ -274,6 +274,7 @@ enum SIP_AudioOutputEnum {
   wired_headset, // Wired headset 3.5mm jack
   speaker, // Device speaker
   earpiece, // Device earpiece
+  unknown, // Unknown device
 }
 
 class SIP_AudioOutputDevice {

@@ -58,7 +58,7 @@ class SIP_Session {
   }
 
   Future<bool> setHoldEnabled(bool enabled) async {
-    dynamic options = {}; // 'useUpdate': true
+    dynamic options = <String, dynamic>{}; // 'useUpdate': true
     return enabled ? _session.hold(options) : _session.unhold(options);
   }
 
@@ -82,30 +82,12 @@ class SIP_Session {
     }
   }
 
-  Future<List<SIP_AudioOutputDevice>> getAudioOutputDevice() async {
-    final outputs = <SIP_AudioOutputDevice>[];
-    final streams = _session.connection?.getLocalStreams() ?? [];
-    for (var stream in streams) {
-      final tracks = stream?.getTracks() ?? [];
-      for (var track in tracks) {
-        print('-- track -- ${track.label} = ${track.kind} = ${track.id} = ${track.enabled} = ${track.muted}');
-      }
-    }
-    return outputs;
+  SIP_AudioOutputDevice getAudioOutputDevice() {
+    return SIP_AudioOutputDevice('', '', SIP_AudioOutputEnum.unknown);
   }
 
   void sendDTMF(String tones, [Map<String, dynamic>? options]) {
     _session.sendDTMF(tones, options);
-  }
-
-  void toggleSpeaker({bool? speakerOn}) {
-    // event.stream?.getAudioTracks().firstOrNull?.enableSpeakerphone(false);
-
-    // if (_localStream != null && Platform.isAndroid || Platform.isIOS) {
-    //   isSpeakerOn = speakerOn ?? !isSpeakerOn;
-    //   _print('SPEAKER enableSpeakerphone(${isSpeakerOn})');
-    //   _localStream?.getAudioTracks().firstOrNull?.enableSpeakerphone(isSpeakerOn);
-    // }
   }
 
   void sendMessage(String body, [Map<String, dynamic>? options]) {

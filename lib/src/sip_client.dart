@@ -78,6 +78,7 @@ class SIP_Client extends EventEmitter {
   SIP_Contact? _contact;
   Registrator? _registrator;
   bool _stopping = false;
+  SIP_AudioOutputDevice _currentAudioOutputDevice = SIP_AudioOutputDevice('Earpiece', 'Earpiece', SIP_AudioOutputEnum.earpiece);
 
   SIP_Contact? get contact => _contact;
   SIP_Sessions get sessions => _sessions;
@@ -85,6 +86,7 @@ class SIP_Client extends EventEmitter {
   SIP_SocketInterface? get transport => _socket;
   TransactionBag get transactions => _transactions;
   SIP_StateEnum get state => _registrator?.state ?? SIP_StateEnum.DISCONNECTED;
+  SIP_AudioOutputDevice get currentAudioOutputDevice => _currentAudioOutputDevice;
 
   SIP_Client(this._settings) {
     // SIP_UASettings.
@@ -225,14 +227,20 @@ class SIP_Client extends EventEmitter {
   }
 
   Future<bool> hangup(String target) async {
-    if (!_sessions.containsKey(target)) {
-      logger.e('no session with target $target');
+    try {
+      if (!_sessions.containsKey(target)) {
+        logger.e('no session with target $target');
+        return false;
+      }
+
+      return _sessions[target]!.hangup({});
+    } catch (error) {
+      logger.e('hangup() error: $error');
+      _sessions.remove(target);
       return false;
     }
-
-    return _sessions[target]!.hangup({});
   }
-  
+
   Future<bool> setMicEnabled(String target, bool enabled) async {
     if (!_sessions.containsKey(target)) {
       logger.e('no session with target $target');
@@ -264,7 +272,6 @@ class SIP_Client extends EventEmitter {
     final devices = await navigator.mediaDevices.enumerateDevices();
     final outputs = <SIP_AudioOutputDevice>[];
     for (var device in devices) {
-      print('=========== ${device.label}, ${device.kind}, ${device.groupId}, ${device.deviceId}');
       if (device.kind == 'audiooutput') {
         if (device.deviceId.toLowerCase().contains('bluetooth') || (device.groupId != null && device.groupId!.toLowerCase().contains('bluetooth'))) {
           outputs.add(SIP_AudioOutputDevice(device.label, device.deviceId, SIP_AudioOutputEnum.bluetooth));
@@ -284,22 +291,26 @@ class SIP_Client extends EventEmitter {
     return outputs;
   }
 
-  Future<List<SIP_AudioOutputDevice>>  getCurrentAudioOutputDevice(String target) async {
-    if (!_sessions.containsKey(target)) {
-      logger.e('no session with target $target');
-      return [];
-    }
-
-    return _sessions[target]!.getAudioOutputDevice();
-  }
-
   Future<bool> setAudioOutput(String target, SIP_AudioOutputDevice device) async {
     if (!_sessions.containsKey(target)) {
       logger.e('no session with target $target');
       return false;
     }
 
+    _currentAudioOutputDevice = device;
     return _sessions[target]!.setAudioOutputDevice(device);
+  }
+
+  Future resetAudioOutputDevice(String target) async {
+    final devices = await getAudioOutputDevices();
+    if (devices.isEmpty) return;
+
+    final device = devices.firstWhereOrNull((d) => d.type == SIP_AudioOutputEnum.bluetooth) ??
+        devices.firstWhereOrNull((d) => d.type == SIP_AudioOutputEnum.wired_headset) ??
+        devices.firstWhereOrNull((d) => d.type == SIP_AudioOutputEnum.earpiece) ??
+        devices.first;
+
+    setAudioOutput(target, device);
   }
 
   /**
